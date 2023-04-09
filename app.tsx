@@ -14,58 +14,50 @@ function App() {
   const left = orientation ? (limit90(orientation.gamma) / 90 + 1) * width / 2 : width;
 
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const [audioCtx1, setAudioCtx1] = useState();
-  const [panNode1, setPanNode1] = useState();
-  const [gainNode1, setGainNode1] = useState();
-  const [audioCtx2, setAudioCtx2] = useState();
-  const [panNode2, setPanNode2] = useState();
-  const [gainNode2, setGainNode2] = useState();
+  const [audioCtx, setAudioCtx] = useState();
+  const [gainNode, setGainNode] = useState();
+  const [sound1, setSound1] = useState();
+  const [sound2, setSound2] = useState();
+  const [isAnglePositive, setIsAnglePositive] = useState(true);
   const [clock, setClock] = useState(Math.random);
+
+  const switchSound = (id: Number) => {
+    const source = audioCtx.createBufferSource();
+    source.buffer = (id === 1) ? sound1 : sound2;
+    source.loop = true;
+    source.connect(gainNode);
+  }
+
   useEffect(() => {
-    const _audioCtx1 = new window.AudioContext();
+    const _audioCtx = new window.AudioContext();
+    setAudioCtx(_audioCtx);
+    const source = _audioCtx.createBufferSource();
     const request1 = new XMLHttpRequest();
+
     request1.open('GET', 'vibration1.wav', true);
     request1.responseType = 'arraybuffer';
     request1.onload = () => {
       const audioData = request1.response;
-      const source = _audioCtx1.createBufferSource();
-      _audioCtx1.decodeAudioData(audioData).then((decodedData) => {
+      _audioCtx.decodeAudioData(audioData).then((decodedData) => {
         source.buffer = decodedData;
+        setSound1(decodedData);
         source.loop = true;
-        const _gainNode = _audioCtx1.createGain();
+        const _gainNode = _audioCtx.createGain();
         source.connect(_gainNode);
-        _gainNode.connect(_audioCtx1.destination);
-        const _panNode = _audioCtx1.createStereoPanner();
-        source.connect(_panNode);
-        _panNode.connect(_gainNode);
+        _gainNode.connect(_audioCtx.destination);
         source.start();
-        _audioCtx1.suspend();
-        setAudioCtx1(_audioCtx1);
-        setPanNode1(_panNode);
-        setGainNode1(_gainNode);
+        _audioCtx.suspend();
+        setGainNode(_gainNode);
       });
     };
-    const _audioCtx2 = new window.AudioContext();
+    request1.send();
     const request2 = new XMLHttpRequest();
     request2.open('GET', 'vibration2.wav', true);
     request2.responseType = 'arraybuffer';
     request2.onload = () => {
       const audioData = request2.response;
-      const source = _audioCtx2.createBufferSource();
-      _audioCtx2.decodeAudioData(audioData).then((decodedData) => {
-        source.buffer = decodedData;
-        source.loop = true;
-        const _gainNode = _audioCtx2.createGain();
-        source.connect(_gainNode);
-        _gainNode.connect(_audioCtx2.destination);
-        const _panNode = _audioCtx2.createStereoPanner();
-        source.connect(_panNode);
-        _panNode.connect(_gainNode);
-        source.start();
-        _audioCtx2.suspend();
-        setAudioCtx2(_audioCtx2);
-        setPanNode2(_panNode);
-        setGainNode2(_gainNode);
+      _audioCtx.decodeAudioData(audioData).then((decodedData) => {
+        setSound2(decodedData);
       });
     };
     request2.send();
@@ -74,10 +66,13 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if(!panNode1 || !panNode2) return;
+    if(!gainNode) return;
     const angle = limit90(orientation ? orientation.beta : 0);
-    gainNode1.gain.value = Math.max(0, angle);
-    gainNode2.gain.value = Math.max(0, angle);
+    if((angle > 0) !== isAnglePositive) {
+      switchSound((angle > 0) ? 1 : 2);
+      setIsAnglePositive(angle > 0);
+    }
+    gainNode.gain.value = Math.max(0, Math.abs(angle));
   }, [clock]);
 
   return (
@@ -92,7 +87,7 @@ function App() {
         </button>
       }
       {!audioEnabled &&
-        <button onClick={ () => { audioCtx1.resume(); audioCtx2.resume(); setAudioEnabled(true); } }>
+        <button onClick={ () => { audioCtx.resume(); setAudioEnabled(true); } }>
           Start sound
         </button>
       }
