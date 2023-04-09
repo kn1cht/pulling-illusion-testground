@@ -72,7 +72,7 @@ function App() {
       switchSound((angle > 0) ? 1 : 2);
       setIsAnglePositive(angle > 0);
     }
-    gainNode.gain.value = Math.max(0, Math.abs(angle));
+    gainNode.gain.value = Math.max(0, Math.abs(angle) / 20);
   }, [clock]);
 
   return (
